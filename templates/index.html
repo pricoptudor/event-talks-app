@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BigQuery Release Notes Explorer</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Custom Stylesheet -->
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-logo">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2005/Atom">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <h2>BQ Explorer</h2>
+            </div>
+            
+            <div class="search-box">
+                <input type="text" id="search-input" placeholder="Search updates...">
+                <span class="search-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                </span>
+            </div>
+
+            <nav class="filters">
+                <h3>Filter by Type</h3>
+                <ul>
+                    <li>
+                        <button class="filter-btn active" data-type="all">
+                            <span class="dot all"></span> All Updates
+                            <span class="count-badge" id="count-all">0</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button class="filter-btn" data-type="feature">
+                            <span class="dot feature"></span> Features
+                            <span class="count-badge" id="count-feature">0</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button class="filter-btn" data-type="fix">
+                            <span class="dot fix"></span> Fixes
+                            <span class="count-badge" id="count-fix">0</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button class="filter-btn" data-type="issue">
+                            <span class="dot issue"></span> Issues
+                            <span class="count-badge" id="count-issue">0</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button class="filter-btn" data-type="deprecation">
+                            <span class="dot deprecation"></span> Deprecations
+                            <span class="count-badge" id="count-deprecation">0</span>
+                        </button>
+                    </li>
+                </ul>
+            </nav>
+
+            <div class="actions">
+                <button id="refresh-btn" class="primary-btn">
+                    <span class="spinner" id="btn-spinner"></span>
+                    <span class="btn-text">Refresh Feed</span>
+                </button>
+            </div>
+            
+            <div class="status-footer">
+                <p>Status: <span id="status-text" class="status-badge success">Connecting...</span></p>
+                <p class="source-info">Source: <span id="source-text">-</span></p>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="main-header">
+                <div class="header-titles">
+                    <h1>BigQuery Release Notes</h1>
+                    <p class="subtitle">Track features, improvements, and fixes in Google Cloud BigQuery</p>
+                </div>
+                <div class="stats-panel">
+                    <div class="stat-card">
+                        <span class="stat-val" id="total-count">0</span>
+                        <span class="stat-lbl">Total Items</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Loading overlay -->
+            <div class="loader-container" id="feed-loader">
+                <div class="pulse-loader"></div>
+                <p>Fetching latest release notes...</p>
+            </div>
+
+            <!-- Empty State -->
+            <div class="empty-state hidden" id="empty-state">
+                <div class="empty-icon">📂</div>
+                <h3>No Release Notes Found</h3>
+                <p>Try adjusting your search filters or check your network connection.</p>
+                <button id="retry-btn" class="secondary-btn">Retry Refresh</button>
+            </div>
+
+            <!-- Grid container -->
+            <section class="notes-grid" id="notes-grid"></section>
+        </main>
+    </div>
+
+    <!-- Tweet Modal -->
+    <div class="modal-overlay" id="tweet-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2>Share on X / Twitter</h2>
+                <button class="close-btn" id="close-modal-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="selected-note-preview">
+                    <div class="preview-header">
+                        <span class="tag-badge" id="preview-type">Feature</span>
+                        <span class="preview-date" id="preview-date">June 15, 2026</span>
+                    </div>
+                    <div class="preview-text" id="preview-content">
+                        <!-- Content snippet populated dynamically -->
+                    </div>
+                </div>
+                
+                <div class="tweet-editor-container">
+                    <label for="tweet-textarea">Compose your post:</label>
+                    <textarea id="tweet-textarea" rows="5" placeholder="Share this update..."></textarea>
+                    
+                    <div class="tweet-editor-footer">
+                        <div class="char-counter">
+                            <span id="char-count">0</span> / <span id="char-max">280</span>
+                        </div>
+                        <div class="tweet-link-badge">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                            <span id="tweet-link-text">bq-releases-link</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="secondary-btn" id="cancel-tweet-btn">Cancel</button>
+                <button class="tweet-action-btn" id="submit-tweet-btn">
+                    <svg viewBox="0 0 24 24" class="x-icon">
+                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                    </svg>
+                    Tweet this Update
+                </button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
