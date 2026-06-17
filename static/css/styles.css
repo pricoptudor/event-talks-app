@@ -50,6 +50,87 @@
     --font-body: 'Inter', sans-serif;
 }
 
+/* Light Theme Variables */
+body.light-theme {
+    --bg-main: #f8fafc;        /* Slate 50 */
+    --bg-sidebar: #f1f5f9;     /* Slate 100 */
+    --bg-card: #ffffff;        /* White */
+    --bg-card-hover: #f1f5f9;  /* Slate 100 */
+    
+    --border-color: rgba(15, 23, 42, 0.08);
+    --border-color-hover: rgba(15, 23, 42, 0.15);
+    
+    --text-primary: #0f172a;   /* Slate 900 */
+    --text-secondary: #334155; /* Slate 700 */
+    --text-muted: #64748b;     /* Slate 500 */
+    
+    --color-feature-bg: rgba(16, 185, 129, 0.06);
+    --color-fix-bg: rgba(59, 130, 246, 0.06);
+    --color-issue-bg: rgba(239, 68, 68, 0.06);
+    --color-deprecation-bg: rgba(245, 158, 11, 0.06);
+}
+
+/* Helper utility */
+.hidden {
+    display: none !important;
+}
+
+/* Header layout additions */
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.theme-toggle-container {
+    display: flex;
+    align-items: center;
+}
+
+.theme-toggle-btn {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-color);
+    width: 42px;
+    height: 42px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-primary);
+    transition: var(--transition-normal);
+}
+
+body.light-theme .theme-toggle-btn {
+    background: rgba(15, 23, 42, 0.04);
+}
+
+.theme-toggle-btn:hover {
+    background-color: var(--bg-card-hover);
+    border-color: var(--border-color-hover);
+    transform: scale(1.05);
+}
+
+.theme-toggle-btn .sun-icon {
+    display: none;
+}
+
+.theme-toggle-btn .moon-icon {
+    display: block;
+    fill: currentColor;
+}
+
+body.light-theme .theme-toggle-btn .sun-icon {
+    display: block;
+    color: #f59e0b; /* Amber */
+}
+
+body.light-theme .theme-toggle-btn .moon-icon {
+    display: none;
+}
+
+
+
 /* Base resets & styles */
 * {
     box-sizing: border-box;
@@ -623,7 +704,12 @@ body {
     gap: 4px;
 }
 
-.card-tweet-btn {
+.card-actions-row {
+    display: flex;
+    gap: 8px;
+}
+
+.card-action-icon-btn {
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid var(--border-color);
     width: 32px;
@@ -637,17 +723,28 @@ body {
     color: var(--text-secondary);
 }
 
-.card-tweet-btn:hover {
-    background-color: #f8fafc;
-    color: #0f172a;
+body.light-theme .card-action-icon-btn {
+    background: rgba(15, 23, 42, 0.04);
+}
+
+.card-action-icon-btn:hover {
+    background-color: var(--text-primary);
+    color: var(--bg-main);
     transform: scale(1.1);
 }
 
-.card-tweet-btn svg {
+.card-action-icon-btn svg {
     width: 14px;
     height: 14px;
     fill: currentColor;
 }
+
+.card-action-icon-btn.copied {
+    background-color: var(--color-feature) !important;
+    color: white !important;
+    border-color: var(--color-feature) !important;
+}
+
 
 /* Modal Styling */
 .modal-overlay {

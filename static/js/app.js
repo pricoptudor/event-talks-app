@@ -10,11 +10,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const feedLoader = document.getElementById('feed-loader');
     const emptyState = document.getElementById('empty-state');
     const refreshBtn = document.getElementById('refresh-btn');
+    const exportCsvBtn = document.getElementById('export-csv-btn');
     const btnSpinner = document.getElementById('btn-spinner');
     const btnText = refreshBtn.querySelector('.btn-text');
     const retryBtn = document.getElementById('retry-btn');
     const searchInput = document.getElementById('search-input');
     const filterButtons = document.querySelectorAll('.filter-btn');
+    const themeToggleBtn = document.getElementById('theme-toggle');
     
     // Status Elements
     const statusText = document.getElementById('status-text');
@@ -42,6 +44,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Max length for tweet text (X/Twitter counts URLs as 23 characters, leaving 256 for text)
     const MAX_TWEET_TEXT_LEN = 256;
+
+    // Initialize Theme from localStorage
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    if (savedTheme === 'light') {
+        document.body.classList.add('light-theme');
+    }
 
     // Fetch releases from local Flask API
     async function fetchReleases(forceRefresh = false) {
@@ -85,6 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
             btnSpinner.classList.add('active');
             btnText.textContent = 'Refreshing...';
             refreshBtn.disabled = true;
+            if (exportCsvBtn) exportCsvBtn.disabled = true;
             statusText.textContent = 'Refreshing...';
             statusText.className = 'status-badge loading';
         } else {
@@ -92,6 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
             btnSpinner.classList.remove('active');
             btnText.textContent = 'Refresh Feed';
             refreshBtn.disabled = false;
+            if (exportCsvBtn) exportCsvBtn.disabled = false;
         }
     }
 
@@ -220,26 +230,122 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
                 <div class="card-footer">
                     <span class="read-more">
-                        Tweet this
+                        Tweet / Copy
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                     </span>
-                    <button class="card-tweet-btn" title="Tweet this update">
-                        <svg viewBox="0 0 24 24">
-                            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                        </svg>
-                    </button>
+                    <div class="card-actions-row">
+                        <button class="card-action-icon-btn copy-btn" title="Copy plain text update">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        </button>
+                        <button class="card-action-icon-btn tweet-btn" title="Tweet this update">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
             `;
             
             // Add click handlers: Clicking the card opens the tweet composer
             card.addEventListener('click', (e) => {
-                // If they clicked a link inside the card, ignore (though we disabled pointer events on links in cards via CSS anyway)
                 if (e.target.tagName === 'A') return;
+                openTweetModal(update);
+            });
+
+            // Copy button click (stops bubbling so it doesn't open modal)
+            const copyBtn = card.querySelector('.copy-btn');
+            copyBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                copyToClipboard(update, copyBtn);
+            });
+
+            // Tweet button click (stops bubbling so it doesn't trigger generic card click)
+            const tweetBtn = card.querySelector('.tweet-btn');
+            tweetBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
                 openTweetModal(update);
             });
             
             notesGrid.appendChild(card);
         });
+    }
+
+    // Copy update content to clipboard with feedback
+    function copyToClipboard(update, btnElement) {
+        const plainText = stripHtml(update.content).replace(/\s+/g, ' ').trim();
+        const fullShareText = `Google BigQuery ${update.type} (${update.date}):\n${plainText}\n\nLink: ${update.link}`;
+        
+        navigator.clipboard.writeText(fullShareText).then(() => {
+            // Apply visual copied success state
+            btnElement.classList.add('copied');
+            const originalHTML = btnElement.innerHTML;
+            btnElement.innerHTML = `
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+            `;
+            
+            setTimeout(() => {
+                btnElement.classList.remove('copied');
+                btnElement.innerHTML = originalHTML;
+            }, 1800);
+        }).catch(err => {
+            console.error('Failed to copy release update: ', err);
+            alert("Could not copy release update to clipboard.");
+        });
+    }
+
+    // Export current filtered updates to CSV
+    function exportToCSV() {
+        const filtered = allUpdates.filter(update => {
+            if (activeFilter !== 'all') {
+                const normType = normalizeType(update.type);
+                if (normType !== activeFilter) return false;
+            }
+            if (searchQuery) {
+                const text = (update.type + ' ' + update.date + ' ' + stripHtml(update.content)).toLowerCase();
+                if (!text.includes(searchQuery)) return false;
+            }
+            return true;
+        });
+
+        if (filtered.length === 0) {
+            alert("No release notes available to export under current search/filters.");
+            return;
+        }
+
+        // CSV Header
+        let csvContent = "\ufeffDate,Type,Link,Description\n"; // Added BOM for UTF-8 compatibility with Excel
+
+        filtered.forEach(update => {
+            const date = escapeCSVField(update.date);
+            const type = escapeCSVField(update.type);
+            const link = escapeCSVField(update.link);
+            const desc = escapeCSVField(stripHtml(update.content).replace(/\s+/g, ' ').trim());
+            csvContent += `${date},${type},${link},${desc}\n`;
+        });
+
+        // Trigger CSV File Download
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `bigquery_release_notes_${activeFilter}_${new Date().toISOString().slice(0,10)}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    // Helper to format string values safely for CSV cells
+    function escapeCSVField(field) {
+        if (field === null || field === undefined) return '""';
+        let stringVal = String(field);
+        stringVal = stringVal.replace(/"/g, '""'); // Double up double-quotes to escape them
+        if (stringVal.includes(',') || stringVal.includes('"') || stringVal.includes('\n') || stringVal.includes('\r')) {
+            return `"${stringVal}"`; // Wrap cell in quotes if it contains separators
+        }
+        return stringVal;
     }
 
     // Modal Actions
@@ -315,7 +421,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // Event Listeners
     refreshBtn.addEventListener('click', () => fetchReleases(true));
     retryBtn.addEventListener('click', () => fetchReleases(true));
+    exportCsvBtn.addEventListener('click', exportToCSV);
     
+    // Theme Toggle Handler
+    themeToggleBtn.addEventListener('click', () => {
+        document.body.classList.toggle('light-theme');
+        const updatedTheme = document.body.classList.contains('light-theme') ? 'light' : 'dark';
+        localStorage.setItem('theme', updatedTheme);
+    });
+
     // Search input handler
     searchInput.addEventListener('input', (e) => {
         searchQuery = e.target.value.toLowerCase().trim();
